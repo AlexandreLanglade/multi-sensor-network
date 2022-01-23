@@ -1,6 +1,6 @@
 # multi-sensor-network
 
-The goal of this project is to develop a system to collect and monitor a bunch of sensors' datas in a bulding.
+The goal of this project is to develop a system to collect and monitor a bunch of sensors' data in a building.
 
 --------------------
 ## Architecture
