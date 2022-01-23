@@ -1,0 +1,11 @@
+{
+    "number_sensors": "2",
+    "type_sensors": [
+        "temperature",
+        "presence"
+    ],
+    "localisation_sensors": [
+        "43.56178270956244, 1.4696873315554864",
+        "43.56179551297428, 1.4698055769823934"
+    ]
+}
