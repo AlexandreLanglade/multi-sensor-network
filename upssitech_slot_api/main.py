@@ -4,14 +4,19 @@ entrypoint:
     https://multi-sensor-network-api.ew.r.appspot.com/
 endpoints :
     - .../weathers :
-        get/post datas about the weather in Toulouse (virtual sensor)
+        get/post data about the weather in Toulouse (virtual sensor)
     - .../temperatures :
-        get/post datas about temperatures in UPSSITECH  (field sensor)
+        get/post data about temperatures in UPSSITECH  (field sensor)
     - .../presences :
-        get/post datas of the presence detector in UPSSITECH (field sensor)
+        get/post data of the presence detector in UPSSITECH (field sensor)
     - .../devices :
-        get/post datas about devices connected UPSSITECH netwok (virtual sensor)
+        get/post data about devices that have been connected to the UPSSITECH network (virtual sensor)
+    - .../aggregates :
+        get/post the configuration(s) of the aggregate(s)
 """
+
+import datetime
+import json
 
 from flask import Flask
 from flask_restful import Api, Resource, reqparse
@@ -23,119 +28,282 @@ api = Api(app)
 
 # connection to the Firestore database through the google cloud firestore API
 database = firestore.Client(project="multi-sensor-network-api")
-# links to the documents that contain sensors' datas
-doc_temperatures = database.collection("datas").document("temperatures")
-doc_devices = database.collection("datas").document("devices")
-doc_presences = database.collection("datas").document("presences")
-doc_weathers = database.collection("datas").document("weathers")
 
 
 class Weathers(Resource):
     """
-    Each class in this file define a resource for the API.
-    The design is similar for all.
+    Defines a type of resource for the API : weather
     """
 
     def get(self):
-        """This function is the one executed for a GET request.
+        """Executed when there is a GET request to /weathers
 
         Returns:
-            dict, int: the dict contains the datas or an error message
+            dict, int: the dict contains the last 10 data sent by the virtual weather sensor
             and the integer corresponds to the HTTP Status Code
         """
-        return doc_weathers.get().to_dict(), 200
+        weathers_ref = database.collection(u"weathers")
+        query = weathers_ref.order_by(
+            u"timestamp", direction=firestore.Query.DESCENDING
+        ).limit(10)
+        results = query.stream()
+        i = 0
+        data = {}
+        for doc in results:
+            data[i] = doc.to_dict()
+            data[i]["timestamp"] = data[i]["timestamp"].strftime("%d %m %Y %H %M %S")
+            i += 1
+        return data, 200
 
     def post(self):
-        """This function is the one executed for a POST request.
+        """Executed when there is a POST request to /weathers
+
+        args required in the request:
+            - timestamp : timestamp (%d %m %Y %H %M %S) of the request
+            - temperature : temperature outside (Toulouse)
+            - weather : weather description (Toulouse)
 
         Returns:
-            dict, int: the dict contains the datas updated or an error message
+            dict, int: the dict contains the new data sent
             and the integer corresponds to the HTTP Status Code
         """
         parser = reqparse.RequestParser()
-        parser.add_argument("weatherId", required=True)
+        parser.add_argument("timestamp", required=True)
+        parser.add_argument("temperature", required=True)
         parser.add_argument("weather", required=True)
         args = parser.parse_args()
 
-        datas = doc_weathers.get().to_dict()
+        data = {
+            u"timestamp": datetime.datetime.strptime(
+                args["timestamp"] + " +0100", "%d %m %Y %H %M %S %z"
+            ),
+            u"temperature": int(args["temperature"]),
+            u"weather": args["weather"],
+        }
 
-        if args["weatherId"] in datas:
-            return {"message": f"id:{args['weatherId']} already exists."}, 401
+        database.collection(u"weathers").add(data)
 
-        datas[args["weatherId"]] = args["weather"]
-        doc_weathers.set(datas)
+        # datetime is not JSON serializable
+        data["timestamp"] = args["timestamp"]
 
-        return datas, 200
+        return data, 200
 
 
 class Temperatures(Resource):
+    """
+    Defines a type of resource for the API : temperature
+    """
+
     def get(self):
-        return doc_temperatures.get().to_dict(), 200
+        """Executed when there is a GET request to /temperatures
+
+        Returns:
+            dict, int: the dict contains the last 10 data sent by the temperature sensor
+            and the integer corresponds to the HTTP Status Code
+        """
+        temperatures_ref = database.collection(u"temperatures")
+        query = temperatures_ref.order_by(
+            u"timestamp", direction=firestore.Query.DESCENDING
+        ).limit(10)
+        results = query.stream()
+        i = 0
+        data = {}
+        for doc in results:
+            data[i] = doc.to_dict()
+            data[i]["timestamp"] = data[i]["timestamp"].strftime("%d %m %Y %H %M %S")
+            i += 1
+        return data, 200
 
     def post(self):
+        """Executed when there is a POST request to /temperatures
+
+        args required in the request:
+            - timestamp : timestamp (%d %m %Y %H %M %S) of the request
+            - temperature : temperature inside (UPSSITECH)
+
+        Returns:
+            dict, int: the dict contains the new data sent
+            and the integer corresponds to the HTTP Status Code
+        """
         parser = reqparse.RequestParser()
-        parser.add_argument("temperatureId", required=True)
+        parser.add_argument("timestamp", required=True)
         parser.add_argument("temperature", required=True)
         args = parser.parse_args()
 
-        datas = doc_temperatures.get().to_dict()
+        data = {
+            u"timestamp": datetime.datetime.strptime(
+                args["timestamp"] + " +0100", "%d %m %Y %H %M %S %z"
+            ),
+            u"temperature": int(args["temperature"]),
+        }
 
-        if args["temperatureId"] in datas:
-            return {"message": f"id:{args['temperatureId']} already exists."}, 401
+        database.collection(u"temperatures").add(data)
 
-        datas[args["temperatureId"]] = args["temperature"]
-        doc_temperatures.set(datas)
+        # datetime is not JSON serializable
+        data["timestamp"] = args["timestamp"]
 
-        return datas, 200
+        return data, 200
 
 
 class Devices(Resource):
+    """
+    Defines a type of resource for the API : device
+    """
+
     def get(self):
-        return doc_devices.get().to_dict(), 200
+        """Executed when there is a GET request to /devices
+
+        Returns:
+            dict, int: the dict contains the last 10 data sent by the virtual device sensor
+            and the integer corresponds to the HTTP Status Code
+        """
+        devices_ref = database.collection(u"devices")
+        query = devices_ref.order_by(
+            u"timestamp", direction=firestore.Query.DESCENDING
+        ).limit(10)
+        results = query.stream()
+        i = 0
+        data = {}
+        for doc in results:
+            data[i] = doc.to_dict()
+            data[i]["timestamp"] = data[i]["timestamp"].strftime("%d %m %Y %H %M %S")
+            i += 1
+        return data, 200
 
     def post(self):
+        """Executed when there is a POST request to /devices
+
+        args required in the request:
+            - timestamp : timestamp (%d %m %Y %H %M %S) of the request
+            - device : model of the device that joined the network
+
+        Returns:
+            dict, int: the dict contains the new data sent
+            and the integer corresponds to the HTTP Status Code
+        """
         parser = reqparse.RequestParser()
-        parser.add_argument("deviceId", required=True)
+        parser.add_argument("timestamp", required=True)
         parser.add_argument("device", required=True)
         args = parser.parse_args()
 
-        datas = doc_devices.get().to_dict()
+        data = {
+            u"timestamp": datetime.datetime.strptime(
+                args["timestamp"] + " +0100", "%d %m %Y %H %M %S %z"
+            ),
+            u"device": args["device"],
+        }
 
-        if args["deviceId"] in datas:
-            return {"message": f"id:{args['deviceId']} already exists."}, 401
+        database.collection(u"devices").add(data)
 
-        datas[args["deviceId"]] = args["device"]
-        doc_devices.set(datas)
+        # datetime is not JSON serializable
+        data["timestamp"] = args["timestamp"]
 
-        return datas, 200
+        return data, 200
 
 
 class Presences(Resource):
+    """
+    Defines a type of resource for the API : presence
+    """
+
     def get(self):
-        return doc_presences.get().to_dict(), 200
+        """Executed when there is a GET request to /presences
+
+        Returns:
+            dict, int: the dict contains the last 10 data sent by the presence sensor
+            and the integer corresponds to the HTTP Status Code
+        """
+        presences_ref = database.collection(u"presences")
+        query = presences_ref.order_by(
+            u"timestamp", direction=firestore.Query.DESCENDING
+        ).limit(10)
+        results = query.stream()
+        i = 0
+        data = {}
+        for doc in results:
+            data[i] = doc.to_dict()
+            data[i]["timestamp"] = data[i]["timestamp"].strftime("%d %m %Y %H %M %S")
+            i += 1
+        return data, 200
 
     def post(self):
+        """Executed when there is a POST request to /presences
+
+        args required in the request:
+            - timestamp : timestamp (%d %m %Y %H %M %S) of the request
+                Corresponding to the timestamp of the presence detection
+
+        Returns:
+            dict, int: the dict contains the new data sent
+            and the integer corresponds to the HTTP Status Code
+        """
         parser = reqparse.RequestParser()
-        parser.add_argument("presenceId", required=True)
-        parser.add_argument("presence", required=True)
+        parser.add_argument("timestamp", required=True)
         args = parser.parse_args()
 
-        datas = doc_presences.get().to_dict()
+        data = {
+            u"timestamp": datetime.datetime.strptime(
+                args["timestamp"] + " +0100", "%d %m %Y %H %M %S %z"
+            )
+        }
 
-        if args["presenceId"] in datas:
-            return {"message": f"id:{args['presenceId']} already exists."}, 401
+        database.collection(u"presences").add(data)
 
-        datas[args["presenceId"]] = args["presence"]
-        doc_presences.set(datas)
+        # datetime is not JSON serializable
+        data["timestamp"] = args["timestamp"]
 
-        return datas, 200
+        return data, 200
 
 
-# adding resources to the api
+class Aggregates(Resource):
+    """
+    Defines a type of resource for the API : aggregate
+    """
+
+    def get(self):
+        """Executed when there is a GET request to /weathers
+
+        Returns:
+            dict, int: the dict contains the config of the aggregates
+            and the integer corresponds to the HTTP Status Code
+        """
+        docs = database.collection(u"aggregates").stream()
+        i = 0
+        data = {}
+        for doc in docs:
+            data[i] = doc.to_dict()
+            i += 1
+        return data, 200
+
+    def post(self):
+        """Executed when there is a POST request to /aggregates
+
+        args required in the request:
+            - name_aggregate : name of an aggregate
+            - config : dict discribing the config of an aggregate
+
+        Returns:
+            dict, int: the dict contains the new data sent
+            and the integer corresponds to the HTTP Status Code
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument("name_aggregate", required=True)
+        parser.add_argument("config", required=True)
+        args = parser.parse_args()
+
+        data = json.loads(args["config"])
+
+        database.collection(u"aggregates").document(args["name_aggregate"]).set(data)
+
+        return data, 200
+
+
+# adding resources to the api, defining endpoints
 api.add_resource(Weathers, "/weathers")
 api.add_resource(Temperatures, "/temperatures")
 api.add_resource(Devices, "/devices")
 api.add_resource(Presences, "/presences")
+api.add_resource(Aggregates, "/aggregates")
 
 if __name__ == "__main__":
     app.run()
