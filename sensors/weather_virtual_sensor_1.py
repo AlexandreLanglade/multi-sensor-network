@@ -5,7 +5,6 @@ to the upssitech_slot_api to be store in the database.
 It does it every TIME_BETWEEN_REQUESTS seconds.
 """
 
-import datetime
 from time import sleep, strftime
 
 import requests
