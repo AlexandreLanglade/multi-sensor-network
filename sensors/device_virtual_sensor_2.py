@@ -5,7 +5,7 @@ to the upssitech_slot_api to be store in the database.
 """
 
 from random import randint
-from time import sleep
+from time import sleep, strftime
 
 import requests
 
@@ -20,14 +20,14 @@ if __name__ == "__main__":
             # if the request succeeds, look for the model of the device that "connected"
             device_dict = device_request.json()
             device = device_dict["model"]
-            # it's a simulation and the id doesn't really matter here then it is choose randomly
-            random_id = str(randint(1000, 100000))
+            device_timestamp = strftime("%d %m %Y %H %M %S")
+
             # prep of the POST request URL
-            str_request = (
-                API_SLOT_UPSSITECH + "?deviceId=" + random_id + "&device=" + device
-            )
+            str_request = f"{API_SLOT_UPSSITECH}?timestamp={device_timestamp}&device={device}"
+            
             # POST request sent to the upssitech_slot_api
             slot_request = requests.post(str_request)
+
             # print to monitor the request response
             print("-----------------------------")
             print(" ---> POST : " + str_request)
