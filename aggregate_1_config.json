@@ -1,6 +1,6 @@
 {
     "config": {
-        "number_sensors": "2",
+        "number_sensors": 2,
         "type_sensors": [
             "temperature",
             "presence"
