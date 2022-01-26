@@ -291,9 +291,14 @@ class Aggregates(Resource):
         parser.add_argument("config", required=True)
         args = parser.parse_args()
 
-        data = json.loads(args["config"])
+        name_aggregate = args["name_aggregate"]
 
-        database.collection(u"aggregates").document(args["name_aggregate"]).set(data)
+        config = args["config"].replace("'", '"')
+        config = json.loads(config)
+
+        data = {"config": config}
+
+        database.collection(u"aggregates").document(name_aggregate).set(data)
 
         return data, 200
 
