@@ -134,7 +134,7 @@ class Temperatures(Resource):
             u"timestamp": datetime.datetime.strptime(
                 args["timestamp"] + " +0100", "%d %m %Y %H %M %S %z"
             ),
-            u"temperature": int(args["temperature"]),
+            u"temperature": float(args["temperature"]),
         }
 
         database.collection(u"temperatures").add(data)
