@@ -5,8 +5,8 @@ to the upssitech_slot_api to be store in the database.
 It does it every TIME_BETWEEN_REQUESTS seconds.
 """
 
-from random import randint
-from time import sleep
+import datetime
+from time import sleep, strftime
 
 import requests
 
@@ -21,17 +21,16 @@ if __name__ == "__main__":
         if weather_request.status_code == 200:
             # if the request succeeds, look for the weather state and the temperature
             weather_dict = weather_request.json()["consolidated_weather"][0]
-            weather_state_name = weather_dict["weather_state_name"]
+            weather = weather_dict["weather_state_name"]
             weather_temperature = int(weather_dict["the_temp"])
-            weather = str(weather_temperature) + "°C : " + weather_state_name
-            # it's a simulation and the id doesn't really matter here then it is choose randomly
-            random_id = str(randint(1000, 100000))
+            weather_timestamp = strftime("%d %m %Y %H %M %S")
+
             # prep of the POST request URL
-            str_request = (
-                API_SLOT_UPSSITECH + "?weatherId=" + random_id + "&weather=" + weather
-            )
+            str_request = f"{API_SLOT_UPSSITECH}?timestamp={weather_timestamp}&temperature={weather_temperature}&weather={weather}"
+
             # POST request sent to the upssitech_slot_api
             slot_request = requests.post(str_request)
+
             # print to monitor the request response
             print("-----------------------------")
             print(" ---> POST : " + str_request)
